@@ -97,7 +97,7 @@ jobs:
                 reportFile: results
             - type: report
               parameters:
-                template: html
+                template: traditional-html
                 reportDir: /zap/wrk
                 reportFile: zap-detailed-report
           EOF
