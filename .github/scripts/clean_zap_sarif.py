@@ -34,6 +34,41 @@ def walk_uris(obj):
             walk_uris(item)
 
 
+def apply_help_from_solution(sarif: dict) -> int:
+    """ZAP mette già 'solution' e 'references' dentro properties di ogni rule,
+    ma GitHub Security non le mostra da lì: il campo che GitHub renderizza nel
+    dettaglio dell'alert è rule.help (text/markdown). Qui costruiamo quel campo
+    a partire da quello che ZAP ha già scritto, senza inventare nulla.
+    Ritorna il numero di rule aggiornate."""
+    updated = 0
+    for run in sarif.get('runs', []):
+        rules = run.get('tool', {}).get('driver', {}).get('rules', [])
+        for rule in rules:
+            props = rule.get('properties', {})
+            solution = props.get('solution', {}).get('text')
+            references = props.get('references', [])
+
+            if not solution and not references:
+                continue
+
+            md_parts = []
+            text_parts = []
+            if solution:
+                md_parts.append(f"**Solution**\n\n{solution}")
+                text_parts.append(f"Solution:\n{solution}")
+            if references:
+                ref_md = "\n".join(f"- {r}" for r in references)
+                md_parts.append(f"**References**\n\n{ref_md}")
+                text_parts.append("References:\n" + "\n".join(references))
+
+            rule['help'] = {
+                'text': "\n\n".join(text_parts),
+                'markdown': "\n\n".join(md_parts),
+            }
+            updated += 1
+    return updated
+
+
 def apply_security_severity(sarif: dict) -> int:
     """Assegna security-severity a ogni rule in base al suo defaultConfiguration.level.
     Ritorna il numero di rule aggiornate."""
@@ -56,12 +91,14 @@ if __name__ == '__main__':
             data = json.load(f)
 
         walk_uris(data)
-        n = apply_security_severity(data)
+        n_severity = apply_security_severity(data)
+        n_help = apply_help_from_solution(data)
 
         with open('results.json', 'w') as f:
             json.dump(data, f)
 
-        print(f'SARIF bonificato: URI resi granulari, security-severity assegnata a {n} rule.')
+        print(f'SARIF bonificato: URI resi granulari, security-severity assegnata a {n_severity} rule, '
+              f'solution/references spostate in help per {n_help} rule.')
     except Exception as e:
         print(f'Errore FATALE durante la bonifica: {e}')
         sys.exit(1)
