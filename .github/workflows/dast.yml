@@ -81,7 +81,7 @@ jobs:
                   replacementString: ${API_TOKEN}
             - type: openapi
               parameters:
-                apiUrl: http://localhost:8081/openapi.json
+                apiFile: /zap/wrk/openapi/vAPI.yaml
                 targetUrl: http://localhost:8081
             - type: passiveScan-config
             - type: passiveScan-wait
