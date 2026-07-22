@@ -1,0 +1,76 @@
+name: DAST Bake-Off (ZAP vs Xygeni)
+
+on: [push, workflow_dispatch]
+
+jobs:
+  # ==========================================
+  # ROUND 1: Il Campione Open-Source (ZAP)
+  # ==========================================
+  zap-scan:
+    name: OWASP ZAP API Scan
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build e Avvio di VAPI (Ambiente Isolato)
+        run: |
+          docker compose up --build -d
+          sleep 20
+
+      - name: Setup DB e Auth Token
+        id: auth
+        run: |
+          curl -s http://localhost:8081/createdb > /dev/null
+          curl -s -X POST "http://localhost:8081/users/v1/register" -H "Content-Type: application/json" -d '{"username": "zap_user", "password": "zap_password", "email": "zap@test.com"}' > /dev/null
+          TOKEN=$(curl -s -X POST "http://localhost:8081/users/v1/login" -H "Content-Type: application/json" -d '{"username": "zap_user", "password": "zap_password"}' | jq -r .auth_token)
+          echo "API_TOKEN=$TOKEN" >> $GITHUB_ENV
+
+      - name: Creazione configurazione ZAP Automation
+        run: |
+          cat << 'EOF' > vampi-zap.yaml
+          env:
+            contexts:
+              - name: VAPI-Context
+                urls:
+                  - http://localhost:8081
+          jobs:
+            - type: replacer
+              rules:
+                - description: Iniezione Auth Token
+                  matchType: req_header_str
+                  matchString: Authorization
+                  replacementString: Bearer ${{ env.API_TOKEN }}
+            - type: openapi
+              parameters:
+                apiUrl: http://localhost:8081/openapi.json
+            - type: passiveScan-config
+            - type: activeScan
+            - type: report
+              parameters:
+                template: sarif-json
+                reportDir: /zap/wrk
+                reportFile: results
+          EOF
+
+      - name: Esegui scansione OWASP ZAP
+        run: |
+          docker run --user root --network host -v ${{ github.workspace }}:/zap/wrk/:rw -t zaproxy/zap-stable zap.sh -cmd -autorun /zap/wrk/vampi-zap.yaml
+
+      - name: Adatta il SARIF per GitHub Code Scanning
+        if: always()
+        run: |
+          sudo chown -R $USER:$USER results.json
+          python3 .github/scripts/clean_zap_sarif.py
+
+      - name: Upload dei risultati ZAP
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: results.json
+          category: owasp-zap-dast
