@@ -88,6 +88,11 @@ jobs:
               parameters:
                 maxDuration: 5
             - type: activeScan
+              parameters:
+                context: VAPI-Context
+                policyDefinition:
+                  defaultStrength: High
+                  defaultThreshold: Low
             - type: passiveScan-wait
               parameters:
                 maxDuration: 5
@@ -116,7 +121,7 @@ jobs:
       - name: Bonifica SARIF (URI granulari + security-severity)
         if: always()
         run: |
-          python3 .github/scripts/clean_zap_sarif.py
+          python3 clean_zap_sarif.py
 
       - name: Upload dei risultati SARIF per GitHub Security
         uses: github/codeql-action/upload-sarif@v4
