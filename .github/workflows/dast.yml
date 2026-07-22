@@ -33,6 +33,11 @@ jobs:
         run: |
           curl -s http://localhost:8081/createdb > /dev/null
 
+          echo "--- Rotte disponibili (openapi.json) ---"
+          curl -s http://localhost:8081/openapi.json | jq -r '.paths | keys[]' 2>/dev/null || \
+            curl -s http://localhost:8081/openapi.json
+          echo "-----------------------------------------"
+
           REGISTER_RESPONSE=$(curl -s -X POST "http://localhost:8081/users/v1/register" \
             -H "Content-Type: application/json" \
             -d '{"username": "zap_user", "password": "zap_password", "email": "zap@test.com"}')
