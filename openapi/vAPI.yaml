@@ -3,6 +3,8 @@ info:
   title: Vulnerable API
   description: Vulnerable API
   version: '0.1'
+servers:
+  - url: http://localhost:8081
 paths:
   /:
     get:
