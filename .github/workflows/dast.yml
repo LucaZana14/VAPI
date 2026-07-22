@@ -32,10 +32,28 @@ jobs:
         id: auth
         run: |
           curl -s http://localhost:8081/createdb > /dev/null
-          curl -s -X POST "http://localhost:8081/users/v1/register" -H "Content-Type: application/json" -d '{"username": "zap_user", "password": "zap_password", "email": "zap@test.com"}' > /dev/null
-          TOKEN=$(curl -s -X POST "http://localhost:8081/users/v1/login" -H "Content-Type: application/json" -d '{"username": "zap_user", "password": "zap_password"}' | jq -r .auth_token)
+
+          REGISTER_RESPONSE=$(curl -s -X POST "http://localhost:8081/users/v1/register" \
+            -H "Content-Type: application/json" \
+            -d '{"username": "zap_user", "password": "zap_password", "email": "zap@test.com"}')
+          echo "Risposta register: $REGISTER_RESPONSE"
+
+          TOKEN=""
+          for i in {1..10}; do
+            LOGIN_RESPONSE=$(curl -s -X POST "http://localhost:8081/users/v1/login" \
+              -H "Content-Type: application/json" \
+              -d '{"username": "zap_user", "password": "zap_password"}')
+            TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.auth_token // empty')
+            if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
+              echo "Token ottenuto al tentativo ${i}."
+              break
+            fi
+            echo "Tentativo ${i}: token non ancora disponibile, risposta: $LOGIN_RESPONSE"
+            sleep 2
+          done
+
           if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
-            echo "Auth token non ottenuto, interrompo."
+            echo "Auth token non ottenuto dopo 10 tentativi, interrompo."
             exit 1
           fi
           echo "API_TOKEN=$TOKEN" >> $GITHUB_ENV
