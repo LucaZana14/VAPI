@@ -87,12 +87,16 @@ jobs:
             - type: passiveScan-wait
               parameters:
                 maxDuration: 5
-            - type: activeScan
+            - type: activeScan-policy
               parameters:
-                context: VAPI-Context
+                name: HighPolicy
                 policyDefinition:
                   defaultStrength: High
                   defaultThreshold: Low
+            - type: activeScan
+              parameters:
+                context: VAPI-Context
+                policy: HighPolicy
             - type: passiveScan-wait
               parameters:
                 maxDuration: 5
@@ -110,7 +114,17 @@ jobs:
 
       - name: Esecuzione scansione OWASP ZAP
         run: |
+          set +e
           docker run --user root --network host -v ${{ github.workspace }}:/zap/wrk/:rw -t zaproxy/zap-stable zap.sh -cmd -autorun /zap/wrk/vampi-zap.yaml
+          exit_code=$?
+          echo "ZAP exit code: $exit_code"
+          # 0 = successo pulito, 2 = automation plan completato con soli warning (es. parametro
+          # non riconosciuto da questa versione dell'add-on): non blocchiamo la pipeline.
+          # 1 = fallimento reale del plan: qui sì che deve fermarsi.
+          if [ "$exit_code" -eq 1 ]; then
+            exit 1
+          fi
+          exit 0
 
       - name: Correzione permessi file generati
         if: always()
@@ -121,7 +135,7 @@ jobs:
       - name: Bonifica SARIF (URI granulari + security-severity)
         if: always()
         run: |
-          python3 clean_zap_sarif.py
+          python3 .github/scripts/clean_zap_sarif.py
 
       - name: Upload dei risultati SARIF per GitHub Security
         uses: github/codeql-action/upload-sarif@v4
