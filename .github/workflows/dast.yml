@@ -1,19 +1,13 @@
-name: DAST Bake-Off (ZAP vs Xygeni)
-
+name: DAST Comprehensive Pipeline (ZAP)
 on: [push, workflow_dispatch]
-
 jobs:
-  # ==========================================
-  # ROUND 1: Il Campione Open-Source (ZAP)
-  # ==========================================
-  zap-scan:
-    name: OWASP ZAP API Scan
+  zap-comprehensive-scan:
+    name: OWASP ZAP Deep API Scan & Report
     runs-on: ubuntu-latest
     permissions:
       issues: write
       contents: read
       security-events: write
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -21,7 +15,18 @@ jobs:
       - name: Build e Avvio di VAPI (Ambiente Isolato)
         run: |
           docker compose up --build -d
-          sleep 20
+
+      - name: Attesa readiness del target (healthcheck)
+        run: |
+          for i in {1..30}; do
+            if curl -sf http://localhost:8081/ > /dev/null; then
+              echo "Target pronto dopo ${i} tentativi."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Il target non ha risposto in tempo utile."
+          exit 1
 
       - name: Setup DB e Auth Token
         id: auth
@@ -29,48 +34,80 @@ jobs:
           curl -s http://localhost:8081/createdb > /dev/null
           curl -s -X POST "http://localhost:8081/users/v1/register" -H "Content-Type: application/json" -d '{"username": "zap_user", "password": "zap_password", "email": "zap@test.com"}' > /dev/null
           TOKEN=$(curl -s -X POST "http://localhost:8081/users/v1/login" -H "Content-Type: application/json" -d '{"username": "zap_user", "password": "zap_password"}' | jq -r .auth_token)
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "Auth token non ottenuto, interrompo."
+            exit 1
+          fi
           echo "API_TOKEN=$TOKEN" >> $GITHUB_ENV
 
-      - name: Creazione configurazione ZAP Automation
+      - name: Creazione configurazione ZAP Automation Avanzata
+        env:
+          API_TOKEN: ${{ env.API_TOKEN }}
         run: |
-          cat << 'EOF' > vampi-zap.yaml
+          cat << EOF > vampi-zap.yaml
           env:
             contexts:
               - name: VAPI-Context
                 urls:
                   - http://localhost:8081
+                includePaths:
+                  - http://localhost:8081.*
           jobs:
             - type: replacer
               rules:
                 - description: Iniezione Auth Token
                   matchType: req_header_str
                   matchString: Authorization
-                  replacementString: Bearer ${{ env.API_TOKEN }}
+                  replacementString: Bearer ${API_TOKEN}
             - type: openapi
               parameters:
                 apiUrl: http://localhost:8081/openapi.json
             - type: passiveScan-config
+            - type: passiveScan-wait
+              parameters:
+                maxDuration: 5
             - type: activeScan
+            - type: passiveScan-wait
+              parameters:
+                maxDuration: 5
             - type: report
               parameters:
                 template: sarif-json
                 reportDir: /zap/wrk
                 reportFile: results
+            - type: report
+              parameters:
+                template: html
+                reportDir: /zap/wrk
+                reportFile: zap-detailed-report
           EOF
 
-      - name: Esegui scansione OWASP ZAP
+      - name: Esecuzione scansione OWASP ZAP
         run: |
           docker run --user root --network host -v ${{ github.workspace }}:/zap/wrk/:rw -t zaproxy/zap-stable zap.sh -cmd -autorun /zap/wrk/vampi-zap.yaml
 
-      - name: Adatta il SARIF per GitHub Code Scanning
+      - name: Correzione permessi file generati
         if: always()
         run: |
-          sudo chown -R $USER:$USER results.json
-          python3 .github/scripts/clean_zap_sarif.py
+          [ -f results.json ] && sudo chown $USER:$USER results.json || echo "results.json assente, salto."
+          [ -f zap-detailed-report.html ] && sudo chown $USER:$USER zap-detailed-report.html || echo "zap-detailed-report.html assente, salto."
 
-      - name: Upload dei risultati ZAP
+      - name: Bonifica SARIF (URI granulari + security-severity)
+        if: always()
+        run: |
+          python3 clean_zap_sarif.py
+
+      - name: Upload dei risultati SARIF per GitHub Security
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: results.json
           category: owasp-zap-dast
+
+      - name: Salvataggio Report HTML Dettagliato come Artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-html-security-report
+          path: zap-detailed-report.html
+          retention-days: 30
