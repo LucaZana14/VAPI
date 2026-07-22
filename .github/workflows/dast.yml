@@ -28,28 +28,25 @@ jobs:
           echo "Il target non ha risposto in tempo utile."
           exit 1
 
-      - name: Setup DB e Auth Token
+      - name: Setup Auth Token (vAPI)
         id: auth
+        env:
+          # admin1 (id=10) copre anche POST /user, che richiede userid=10
+          VAPI_USERNAME: ${{ vars.VAPI_USERNAME || 'admin1' }}
+          VAPI_PASSWORD: ${{ secrets.VAPI_PASSWORD || 'pass1' }}
         run: |
-          curl -s http://localhost:8081/createdb > /dev/null
-
           echo "--- Rotte disponibili (openapi.json) ---"
           curl -s http://localhost:8081/openapi.json | jq -r '.paths | keys[]' 2>/dev/null || \
             curl -s http://localhost:8081/openapi.json
           echo "-----------------------------------------"
 
-          REGISTER_RESPONSE=$(curl -s -X POST "http://localhost:8081/users/v1/register" \
-            -H "Content-Type: application/json" \
-            -d '{"username": "zap_user", "password": "zap_password", "email": "zap@test.com"}')
-          echo "Risposta register: $REGISTER_RESPONSE"
-
           TOKEN=""
           for i in {1..10}; do
-            LOGIN_RESPONSE=$(curl -s -X POST "http://localhost:8081/users/v1/login" \
+            LOGIN_RESPONSE=$(curl -s -X POST "http://localhost:8081/tokens" \
               -H "Content-Type: application/json" \
-              -d '{"username": "zap_user", "password": "zap_password"}')
-            TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.auth_token // empty')
-            if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
+              -d "{\"username\": \"${VAPI_USERNAME}\", \"password\": \"${VAPI_PASSWORD}\"}")
+            TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.access.token.id // empty')
+            if [ -n "$TOKEN" ]; then
               echo "Token ottenuto al tentativo ${i}."
               break
             fi
@@ -57,7 +54,7 @@ jobs:
             sleep 2
           done
 
-          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+          if [ -z "$TOKEN" ]; then
             echo "Auth token non ottenuto dopo 10 tentativi, interrompo."
             exit 1
           fi
@@ -80,8 +77,8 @@ jobs:
               rules:
                 - description: Iniezione Auth Token
                   matchType: req_header_str
-                  matchString: Authorization
-                  replacementString: Bearer ${API_TOKEN}
+                  matchString: X-Auth-Token
+                  replacementString: ${API_TOKEN}
             - type: openapi
               parameters:
                 apiUrl: http://localhost:8081/openapi.json
