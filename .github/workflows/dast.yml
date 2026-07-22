@@ -82,6 +82,7 @@ jobs:
             - type: openapi
               parameters:
                 apiUrl: http://localhost:8081/openapi.json
+                targetUrl: http://localhost:8081
             - type: passiveScan-config
             - type: passiveScan-wait
               parameters:
@@ -115,7 +116,8 @@ jobs:
       - name: Bonifica SARIF (URI granulari + security-severity)
         if: always()
         run: |
-          python3 .github/scripts/clean_zap_sarif.py
+          python3 clean_zap_sarif.py
+
       - name: Upload dei risultati SARIF per GitHub Security
         uses: github/codeql-action/upload-sarif@v4
         if: always()
