@@ -1,5 +1,10 @@
 name: DAST Comprehensive Pipeline (ZAP)
-on: [push, workflow_dispatch]
+on:
+  push:
+  workflow_dispatch:
+  schedule:
+    # ogni giorno alle 03:00 UTC esegue uno scan profondo (spider + strength Insane)
+    - cron: '0 3 * * *'
 jobs:
   zap-comprehensive-scan:
     name: OWASP ZAP Deep API Scan & Report
@@ -63,7 +68,28 @@ jobs:
       - name: Creazione configurazione ZAP Automation Avanzata
         env:
           API_TOKEN: ${{ env.API_TOKEN }}
+          # scan schedulata (cron) = profonda, push/workflow_dispatch = veloce
+          IS_DEEP_SCAN: ${{ github.event_name == 'schedule' }}
         run: |
+          if [ "$IS_DEEP_SCAN" = "true" ]; then
+            echo "Modalita': SCAN PROFONDA (spider attivo, strength Insane)"
+            POLICY_STRENGTH="Insane"
+            SARIF_CATEGORY="owasp-zap-dast-deep"
+            SPIDER_BLOCK=$(cat << 'SPIDER'
+            - type: spider
+              parameters:
+                context: VAPI-Context
+                maxDuration: 10
+          SPIDER
+          )
+          else
+            echo "Modalita': SCAN VELOCE (solo import OpenAPI)"
+            POLICY_STRENGTH="High"
+            SARIF_CATEGORY="owasp-zap-dast"
+            SPIDER_BLOCK=""
+          fi
+          echo "SARIF_CATEGORY=$SARIF_CATEGORY" >> $GITHUB_ENV
+
           cat << EOF > vampi-zap.yaml
           env:
             contexts:
@@ -79,6 +105,7 @@ jobs:
                   matchType: req_header_str
                   matchString: X-Auth-Token
                   replacementString: ${API_TOKEN}
+          $SPIDER_BLOCK
             - type: openapi
               parameters:
                 apiFile: /zap/wrk/openapi/vAPI.yaml
@@ -91,7 +118,7 @@ jobs:
               parameters:
                 name: HighPolicy
                 policyDefinition:
-                  defaultStrength: High
+                  defaultStrength: $POLICY_STRENGTH
                   defaultThreshold: Low
             - type: activeScan
               parameters:
@@ -111,6 +138,7 @@ jobs:
                 reportDir: /zap/wrk
                 reportFile: zap-detailed-report
           EOF
+          cat vampi-zap.yaml
 
       - name: Esecuzione scansione OWASP ZAP
         run: |
@@ -142,10 +170,10 @@ jobs:
         if: always()
         with:
           sarif_file: results.json
-          category: owasp-zap-dast
+          category: ${{ env.SARIF_CATEGORY }}
 
       - name: Salvataggio Report HTML Dettagliato come Artifact
-        uses: actions/upload-artifact@v7 
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: zap-html-security-report
