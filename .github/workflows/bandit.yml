@@ -37,7 +37,7 @@ jobs:
 
       - name: Bonifica SARIF (security-severity mancante nel formatter Bandit)
         if: always()
-        run: python3 .github/scripts/enhance_bandit_scripts.py results.sarif
+        run: python3 scripts/enhance_bandit_script.py results.sarif
      
       - name: Upload dei risultati SARIF
         uses: github/codeql-action/upload-sarif@v4
