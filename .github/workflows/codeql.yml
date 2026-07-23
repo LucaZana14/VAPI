@@ -1,6 +1,10 @@
 name: "CodeQL Advanced Security"
 
-on: [push, workflow_dispatch]
+on:
+  push:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -9,7 +13,7 @@ jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
-    
+
     permissions:
       actions: read
       contents: read
@@ -22,17 +26,16 @@ jobs:
 
     steps:
     - name: Checkout del codice
-      uses: actions/checkout@v7 
+      uses: actions/checkout@v7
 
     - name: Inizializza CodeQL
       uses: github/codeql-action/init@v4
       with:
         languages: ${{ matrix.language }}
-        # queries: security-extended,security-and-quality
-        queries: security-extended, security-and-quality
+        queries: security-extended,security-and-quality
 
     - name: Autobuild
       uses: github/codeql-action/autobuild@v4
 
     - name: Esegui l'Analisi CodeQL
-      uses: github/codeql-action/analyze@v4 
+      uses: github/codeql-action/analyze@v4

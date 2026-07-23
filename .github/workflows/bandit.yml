@@ -1,6 +1,10 @@
 name: Bandit SAST (Python)
 
-on: [push, workflow_dispatch]
+on:
+  push:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -18,7 +22,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v7 
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
 
@@ -37,11 +41,47 @@ jobs:
 
       - name: Bonifica SARIF (security-severity mancante nel formatter Bandit)
         if: always()
-        run: python3 .github/scripts/enhance_bandit_script.py results.sarif
-     
-      - name: Upload dei risultati SARIF
+        run: |
+          python3 << 'EOF'
+          import json
+
+          LEVEL_RANK = {'note': 0, 'warning': 1, 'error': 2}
+          LEVEL_TO_SEVERITY = {'error': '9.0', 'warning': '6.0', 'note': '3.0'}
+
+          with open('results.sarif') as f:
+              data = json.load(f)
+
+          updated = 0
+          for run in data.get('runs', []):
+              rules = run.get('tool', {}).get('driver', {}).get('rules', [])
+              best_level_by_rule = {}
+              for result in run.get('results', []):
+                  rule_id = result.get('ruleId')
+                  level = result.get('level', 'warning')
+                  if rule_id is None:
+                      continue
+                  cur = LEVEL_RANK.get(best_level_by_rule.get(rule_id), -1)
+                  new = LEVEL_RANK.get(level, -1)
+                  if new > cur:
+                      best_level_by_rule[rule_id] = level
+
+              for rule in rules:
+                  level = best_level_by_rule.get(rule.get('id'))
+                  severity = LEVEL_TO_SEVERITY.get(level)
+                  if severity is None:
+                      continue
+                  rule.setdefault('properties', {})['security-severity'] = severity
+                  updated += 1
+
+          with open('results.sarif', 'w') as f:
+              json.dump(data, f)
+
+          print(f'SARIF Bandit bonificato: security-severity assegnata a {updated} rule.')
+          EOF
+
+      - name: Upload dei risultati SARIF per GitHub Security
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: results.sarif
-          category: ${{ inputs.sarif_category }}
+          category: bandit-sast

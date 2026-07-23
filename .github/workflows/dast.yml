@@ -1,6 +1,8 @@
 name: DAST Comprehensive Pipeline (ZAP)
 on:
   push:
+  pull_request:
+    branches: [main]
   workflow_dispatch:
   schedule:
     # ogni giorno alle 03:00 UTC esegue uno scan profondo (spider + strength Insane)
