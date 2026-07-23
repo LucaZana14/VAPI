@@ -325,7 +325,7 @@ def create_widget_reservation():
     token = connexion.request.headers.get("X-Auth-Token")
     conn = sqlite3.connect("vAPI.db")
     c = conn.cursor()
-    token_query = "SELECT * FROM tokens WHERE token = '%s'" % (str(token))
+    token_query = "SELECT * FROM tokens WHERE token =  '%s'" % (str(token)) #commento di prova
     c.execute(token_query)
     token_record = c.fetchone()
     response = {}
