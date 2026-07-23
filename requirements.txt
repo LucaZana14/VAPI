@@ -3,3 +3,4 @@ pyjwt
 jsonschema==3.2.0
 lxml
 cryptography
+flask
