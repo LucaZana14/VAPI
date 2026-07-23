@@ -82,11 +82,24 @@ jobs:
                 maxDuration: 10
           SPIDER
           )
+            # AJAX Spider: usa un browser headless per eseguire JS reale e seguire
+            # chiamate dinamiche. Su vAPI (nessun frontend) non trova nulla in piu'
+            # dello spider classico, ma lo teniamo attivo per coerenza con progetti
+            # futuri che hanno un frontend JS.
+            AJAX_SPIDER_BLOCK=$(cat << 'AJAXSPIDER'
+            - type: spiderAjax
+              parameters:
+                context: VAPI-Context
+                maxDuration: 10
+                browserId: firefox-headless
+          AJAXSPIDER
+          )
           else
             echo "Modalita': SCAN VELOCE (solo import OpenAPI)"
             POLICY_STRENGTH="High"
             SARIF_CATEGORY="owasp-zap-dast"
             SPIDER_BLOCK=""
+            AJAX_SPIDER_BLOCK=""
           fi
           echo "SARIF_CATEGORY=$SARIF_CATEGORY" >> $GITHUB_ENV
 
@@ -106,6 +119,7 @@ jobs:
                   matchString: X-Auth-Token
                   replacementString: ${API_TOKEN}
           $SPIDER_BLOCK
+          $AJAX_SPIDER_BLOCK
             - type: openapi
               parameters:
                 apiFile: /zap/wrk/openapi/vAPI.yaml
@@ -139,6 +153,58 @@ jobs:
                 reportFile: zap-detailed-report
           EOF
           cat vampi-zap.yaml
+
+      - name: Forced browsing con ffuf (solo deep scan)
+        if: ${{ github.event_name == 'schedule' }}
+        run: |
+          go install github.com/ffuf/ffuf/v2@latest
+          export PATH=$PATH:$(go env GOPATH)/bin
+
+          # wordlist minimale orientata alle API: path/verbi che uno spider
+          # (basato sui link) non puo' scoprire da solo, come /tokens GET
+          # non documentato nello spec di vAPI
+          cat << 'WORDLIST' > api-wordlist.txt
+          tokens
+          token
+          login
+          logout
+          auth
+          user
+          users
+          admin
+          debug
+          health
+          status
+          config
+          backup
+          test
+          uptime
+          widget
+          v1
+          v2
+          api
+          docs
+          swagger
+          openapi
+          openapi.json
+          .git
+          .env
+          console
+          WORDLIST
+
+          ffuf -w api-wordlist.txt \
+            -u http://localhost:8081/FUZZ \
+            -mc 200,201,204,301,302,401,403,500 \
+            -of json -o ffuf-results.json \
+            -t 10
+
+      - name: Salvataggio risultati ffuf come Artifact
+        if: ${{ github.event_name == 'schedule' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ffuf-forced-browsing-results
+          path: ffuf-results.json
+          retention-days: 30
 
       - name: Esecuzione scansione OWASP ZAP
         run: |
