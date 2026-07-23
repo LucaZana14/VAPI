@@ -292,7 +292,7 @@ def create_user():
         )
         return response, 401
 
-
+#controlled by the flag parameter, if present, will return the uptime with the flag specified. If no flag is specified, it will return the uptime without any flags.
 def display_uptime():
     return display_uptime_flag(False)
 
