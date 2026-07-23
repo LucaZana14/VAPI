@@ -95,7 +95,7 @@ $ curl -X POST -H "Content-type: application/json" http://localhost:8081/tokens 
 }'
 ````
 
-### /widget endpoint
+###* /widget endpoint
 
 ```
 POST /widget HTTP/1.1
