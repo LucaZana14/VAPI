@@ -130,6 +130,13 @@ jobs:
             - type: passiveScan-wait
               parameters:
                 maxDuration: 5
+
+            - type: spiderAjax
+              parameters:
+                context: VAPI-Context
+                maxDuration: 10
+                browserId: firefox-headless
+                
             - type: activeScan-policy
               parameters:
                 name: HighPolicy
