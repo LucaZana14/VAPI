@@ -1,0 +1,78 @@
+name: "Nuclei DAST Scan"
+
+on:
+  workflow_call:
+
+jobs:
+  nuclei:
+    name: ProjectDiscovery Nuclei
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del codice
+        uses: actions/checkout@v7 
+
+      - name: Setup Node.js (per VAPI)
+        uses: actions/setup-node@v7 
+        with:
+          node-version: '20'
+
+      - name: Avvio backend VAPI
+        run: |
+          npm install
+          npm start &
+          sleep 15
+
+      - name: Esecuzione Nuclei v3
+        uses: projectdiscovery/nuclei-action@v3
+        with:
+          version: "latest"
+          cache: true
+          args: "-u http://localhost:8081 -sarif-export nuclei-results.sarif"
+        continue-on-error: true
+
+      - name: Genera Report CSV
+        if: always()
+        run: |
+          if [ -f nuclei-results.sarif ]; then
+            python3 -c "
+          import json, csv
+
+          with open('nuclei-results.sarif', 'r') as f:
+              sarif = json.load(f)
+
+          with open('nuclei-report.csv', 'w', newline='') as csv_file:
+              writer = csv.writer(csv_file)
+              writer.writerow(['Vulnerabilità', 'Gravità', 'Endpoint/URL', 'Messaggio/Descrizione'])
+
+              for run in sarif.get('runs', []):
+                  for res in run.get('results', []):
+                      rule_id = res.get('ruleId', 'Unknown')
+                      level = res.get('level', 'warning').upper()
+                      message = res.get('message', {}).get('text', 'N/D')
+                      
+                      locs = res.get('locations', [{}])
+                      phys_loc = locs[0].get('physicalLocation', {}) if locs else {}
+                      file_path = phys_loc.get('artifactLocation', {}).get('uri', 'Sconosciuto')
+                      
+                      writer.writerow([rule_id, level, file_path, message])
+          "
+            echo "Report CSV di Nuclei generato con successo!"
+          else
+            echo "Nessun file SARIF generato da Nuclei."
+          fi
+
+
+      - name: Carica i risultati su GitHub Security
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: nuclei-results.sarif
+
+      - name: Salva Report negli Artifatti
+        if: always()
+        uses: actions/upload-artifact@v7 
+        with:
+          name: nuclei-security-reports
+          path: |
+            nuclei-results.sarif
+            nuclei-report.csv
