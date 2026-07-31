@@ -17,12 +17,12 @@ jobs:
         with:
           node-version: '20'
 
+          #ok
       - name: Avvio backend VAPI
         run: |
           npm install
           npm start &
           sleep 15
-
       - name: Esecuzione Nuclei v3
         uses: projectdiscovery/nuclei-action@v3
         with:
