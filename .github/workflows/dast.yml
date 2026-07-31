@@ -133,10 +133,11 @@ jobs:
 
             - type: spiderAjax
               parameters:
+                url: http://localhost:8081/openapi.json 
                 context: VAPI-Context
                 maxDuration: 10
                 browserId: firefox-headless
-                
+
             - type: activeScan-policy
               parameters:
                 name: HighPolicy
