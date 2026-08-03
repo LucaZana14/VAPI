@@ -1,0 +1,439 @@
+{
+    "info": {
+      "description": "Vulnerable API",
+      "title": "Vulnerable API",
+      "version": "0.1"
+    },
+    "openapi": "3.0.1",
+    "paths": {
+      "/": {
+        "get": {
+          "description": "Return API status",
+          "operationId": "get_root",
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "examples": {},
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              },
+              "description": "API status results"
+            }
+          },
+          "x-openapi-router-controller": "vAPI"
+        }
+      },
+      "/tokens": {
+        "post": {
+          "description": "Authenticate",
+          "operationId": "get_token",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "0": {
+                    "value": "{\"username\": \"user1\",\n \"password\":\"pass1\"}"
+                  }
+                },
+                "schema": {
+                  "properties": {
+                    "password": {
+                      "type": "string"
+                    },
+                    "username": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "examples": {},
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Authentication response"
+            },
+            "400": {
+              "content": {
+                "application/problem+json": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Invalid input"
+            },
+            "401": {
+              "content": {
+                "application/json": {
+                  "examples": {
+                    "0": {
+                      "value": "{\n  \"error\": {\n    \"message\": \"username  not found\"\n  }\n}"
+                    }
+                  },
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Unauthorized"
+            }
+          },
+          "x-openapi-router-controller": "vAPI"
+        }
+      },
+      "/uptime": {
+        "get": {
+          "description": "Auto generated using Swagger Inspector",
+          "operationId": "display_uptime",
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "examples": {},
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Auto generated using Swagger Inspector"
+            }
+          },
+          "x-openapi-router-controller": "vAPI"
+        }
+      },
+      "/uptime/{flag}": {
+        "get": {
+          "description": "Flag for uptime",
+          "operationId": "display_uptime_flag",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "flag",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "examples": {},
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Auto generated using Swagger Inspector"
+            },
+            "404": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Not found"
+            }
+          },
+          "x-openapi-router-controller": "vAPI"
+        }
+      },
+      "/user": {
+        "post": {
+          "description": "Auto generated using Swagger Inspector",
+          "operationId": "create_user",
+          "parameters": [
+            {
+              "example": "THISISATOKEN",
+              "in": "header",
+              "name": "X-Auth-Token",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "0": {
+                    "value": "{\"username\": \"USERNAME\",\"password\": \"PASSWORD\"}"
+                  }
+                },
+                "schema": {
+                  "properties": {
+                    "password": {
+                      "type": "string"
+                    },
+                    "username": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "examples": {
+                    "0": {
+                      "value": "{\"response\": {\"error\": {\"message\": \"must provide valid admin token\"}}}"
+                    }
+                  },
+                  "schema": {
+                    "properties": {
+                      "response": {
+                        "properties": {
+                          "error": {
+                            "properties": {
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          }
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "type": "object"
+                  }
+                }
+              },
+              "description": "Auto generated using Swagger Inspector"
+            },
+            "400": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Invalid input"
+            },
+            "401": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Unauthenticated"
+            },
+            "403": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Unauthorized"
+            }
+          },
+          "x-openapi-router-controller": "vAPI"
+        }
+      },
+      "/user/{user}": {
+        "get": {
+          "operationId": "get_user",
+          "parameters": [
+            {
+              "description": "User account",
+              "in": "path",
+              "name": "user",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "example": "THISISATOKEN",
+              "in": "header",
+              "name": "X-Auth-Token",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "examples": {
+                    "0": {
+                      "value": "{\"response\": {\"error\": {\"message\": \"token id THISISATOKEN not found\"}}}"
+                    }
+                  },
+                  "schema": {
+                    "properties": {
+                      "response": {
+                        "properties": {
+                          "error": {
+                            "properties": {
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          }
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "type": "object"
+                  }
+                }
+              },
+              "description": "Auto generated using Swagger Inspector"
+            },
+            "400": {
+              "content": {
+                "application/problem+json": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Invalid input"
+            },
+            "401": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Unauthenticated"
+            },
+            "403": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Unauthorized"
+            },
+            "404": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Not found"
+            }
+          },
+          "x-openapi-router-controller": "vAPI"
+        }
+      },
+      "/widget": {
+        "post": {
+          "description": "Make widget reservation",
+          "operationId": "create_widget_reservation",
+          "parameters": [
+            {
+              "example": "THISISATOKEN",
+              "in": "header",
+              "name": "X-Auth-Token",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "0": {
+                    "value": "{\"name\": \"widgetname\"}"
+                  }
+                },
+                "schema": {
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "examples": {},
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Successful widget reservation"
+            },
+            "400": {
+              "content": {
+                "application/problem+json": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Invalid input"
+            },
+            "401": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Unauthenticated"
+            },
+            "403": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Unauthorized"
+            }
+          },
+          "x-openapi-router-controller": "vAPI"
+        }
+      }
+    },
+    "servers": [
+      {
+        "url": ""
+      }
+    ]
+  }
