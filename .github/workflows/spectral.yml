@@ -103,11 +103,11 @@ jobs:
       - name: Genera Report CSV
         if: always()
         run: |
-          if [ -f spectral.sarif ]; then
+          if [ -f spectral-result.sarif ]; then
             python3 -c "
           import json, csv
 
-          with open('spectral.sarif', 'r') as f:
+          with open('spectral-result.sarif', 'r') as f:
               sarif = json.load(f)
 
           with open('spectral-report.csv', 'w', newline='') as csv_file:
