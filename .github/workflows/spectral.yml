@@ -100,9 +100,50 @@ jobs:
           EOF
           python3 convert.py
 
+      - name: Genera Report CSV
+        if: always()
+        run: |
+          if [ -f spectral.sarif ]; then
+            python3 -c "
+          import json, csv
+
+          with open('spectral.sarif', 'r') as f:
+              sarif = json.load(f)
+
+          with open('spectral-report.csv', 'w', newline='') as csv_file:
+              writer = csv.writer(csv_file)
+              writer.writerow(['Vulnerabilità', 'Gravità', 'Endpoint/URL', 'Messaggio/Descrizione'])
+
+              for run in sarif.get('runs', []):
+                  for res in run.get('results', []):
+                      rule_id = res.get('ruleId', 'Unknown')
+                      level = res.get('level', 'warning').upper()
+                      message = res.get('message', {}).get('text', 'N/D')
+                      
+                      locs = res.get('locations', [{}])
+                      phys_loc = locs[0].get('physicalLocation', {}) if locs else {}
+                      file_path = phys_loc.get('artifactLocation', {}).get('uri', 'Sconosciuto')
+                      
+                      writer.writerow([rule_id, level, file_path, message])
+          "
+            echo "Report CSV di Spectral generato con successo!"
+          else
+            echo "Nessun file SARIF generato da Spectral."
+          fi
+  
+
       - name: Upload Spectral results to GitHub
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: spectral-results.sarif
           category: spectral-api-linting
+
+      - name: Salva Report negli Artifatti
+        if: always()
+        uses: actions/upload-artifact@v7 
+        with:
+          name: spectral-security-reports
+          path: |
+            spectral-results.sarif
+            spectral-report.csv
