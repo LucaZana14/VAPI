@@ -54,7 +54,7 @@ jobs:
               issues = json.load(f)
               
           # 2. MODIFICA QUI: Python deve leggere il file YAML di VAmPI
-          with open("openapi_specs/openapi3.yml", "r") as f:
+          with open("openapi.json", "r") as f:
               openapi_lines = f.readlines()
           
           sarif = {
@@ -99,7 +99,7 @@ jobs:
               json.dump(sarif, f, indent=2)
           EOF
           python3 convert.py
-          
+
       - name: Upload Spectral results to GitHub
         uses: github/codeql-action/upload-sarif@v4
         if: always()
